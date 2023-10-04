@@ -21,18 +21,17 @@ def fetch_product_data(product_id):
         return None
 
 
-
 def create_products_table(cursor):
     cursor.executescript('''
     DROP TABLE IF EXISTS "products"; 
-    CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY,
-        title TEXT,
-        category TEXT,
-        price REAL,
-        description TEXT,
-        date_added DATETIME,
-        total_cost REAL
+    CREATE TABLE IF NOT EXISTS "products" (
+        "id" INTEGER PRIMARY KEY,
+        "title" TEXT,
+        "category" TEXT,
+        "price" REAL,
+        "description" TEXT,
+        "date_added" DATETIME,
+        "total_cost" REAL
                 )''')
     print("SQLite database 'products.db' and table 'products' created successfully.")
 
@@ -46,7 +45,7 @@ def insert_product_into_db(cursor, product_data):
     total_cost = price * random.randint(1, 10)
 
     cursor.execute(
-        "INSERT INTO products (title, category, price, description, date_added, total_cost) VALUES (?, ?, ?, ?, ?, ?)",
+        '''INSERT INTO "products" ("title", "category", "price", "description", "date_added", "total_cost") VALUES (?, ?, ?, ?, ?, ?)''',
         (title, category, price, description, date_added, total_cost))
     print(f"Inserted product '{title}' into the database.")
 
@@ -59,8 +58,6 @@ if __name__ == "__main__":
 
     start_id = int(input("Enter the starting product ID: "))
     end_id = int(input("Enter the ending product ID: "))
-
-
 
     for product_id in range(start_id, end_id + 1):
         product_data = fetch_product_data(product_id)

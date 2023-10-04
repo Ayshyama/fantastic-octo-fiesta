@@ -1,25 +1,54 @@
-import json
-
-import aiohttp
-import asyncio
 import requests
 import sqlite3
 from datetime import datetime, timedelta
 import random
+import json
+import aiohttp
+import asyncio
+
+
+def fetch_product_data(product_id):
+    url = f"https://fakestoreapi.com/products/{product_id}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        try:
+            product_data = response.json()
+            return product_data
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse JSON response for {product_id}: {e}")
+            return None
+    else:
+        print(f"Failed to fetch data for {product_id}. Status code: {response.status_code}")
+        return None
+
+
+async def fetch_product_data_async(product_id, session):
+    url = f"https://fakestoreapi.com/products/{product_id}"
+    async with session.get(url) as response:
+        if response.status == 200:
+            try:
+                product_data = await response.json()
+                return product_data
+            except json.JSONDecodeError as e:
+                print(f"Failed to parse JSON response for product ID {product_id}: {e}")
+        else:
+            print(f"Failed to fetch data for product ID {product_id}. Status code: {response.status}")
+
 
 def create_products_table(cursor):
     cursor.executescript('''
     DROP TABLE IF EXISTS "products"; 
-    CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY,
-        title TEXT,
-        category TEXT,
-        price REAL,
-        description TEXT,
-        date_added DATETIME,
-        total_cost REAL
-                )''')
-    print("SQLite database 'products.db' and table 'products' created successfully.")
+    CREATE TABLE IF NOT EXISTS "products" (
+        "id" INTEGER PRIMARY KEY,
+        "title" TEXT,
+        "category" TEXT,
+        "price" REAL,
+        "description" TEXT,
+        "date_added" DATETIME,
+        "total_cost" REAL
+    )''')
+    print("products.db and table 'products' created successfully")
 
 
 def insert_product_into_db(cursor, product_data):
@@ -31,50 +60,34 @@ def insert_product_into_db(cursor, product_data):
     total_cost = price * random.randint(1, 10)
 
     cursor.execute(
-        "INSERT INTO products (title, category, price, description, date_added, total_cost) VALUES (?, ?, ?, ?, ?, ?)",
+        '''INSERT INTO "products" ("title", "category", "price", "description", "date_added", "total_cost") VALUES (?, ?, ?, ?, ?, ?)''',
         (title, category, price, description, date_added, total_cost))
     print(f"Inserted product '{title}' into the database.")
 
 
-async def fetch_product_data_async(session, product_id):
-    url = f"https://fakestoreapi.com/products/{product_id}"
-    async with session.get(url) as response:
-        if response.status == 200:
-            try:
-                product_data = await response.json()
-                return product_data
-            except json.JSONDecodeError as e:
-                print(f"Failed to parse JSON response for product ID {product_id}: {e}")
-                return None
-        else:
-            print(f"Failed to fetch data for product ID {product_id}. Status code: {response.status}")
-            return None
-
-
 async def main():
-    product_id = 1  # Specify the product ID you want to fetch
+    conn = sqlite3.connect('products.db')
+    cursor = conn.cursor()
+
+    create_products_table(cursor)
+
+    start_id = int(input("Enter the starting product ID: "))
+    end_id = int(input("Enter the ending product ID: "))
+
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_product_data_async(session, product_id) for _ in
-                 range(500)]  # Send 100 concurrent requests for the same product ID
-        results = await asyncio.gather(*tasks)
+        tasks = []
+        for product_id in range(start_id, end_id + 1):
+            tasks.append(fetch_product_data_async(product_id, session))
 
-        # Create or connect to the SQLite database
-        conn = sqlite3.connect('products.db')
-        cursor = conn.cursor()
+        product_data_list = await asyncio.gather(*tasks)
 
-        # Create products table
-        create_products_table(cursor)
-
-        # Fetch and insert product data into the database
-        for product_data in results:
+        for product_data in product_data_list:
             if product_data:
                 insert_product_into_db(cursor, product_data)
 
-        # Commit changes and close the database connection
-        conn.commit()
-        conn.close()
+    conn.commit()
+    conn.close()
 
 
 if __name__ == "__main__":
-    # Run the asynchronous fetch and insert process
     asyncio.run(main())

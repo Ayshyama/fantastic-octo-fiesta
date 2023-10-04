@@ -8,16 +8,16 @@ from datetime import datetime, timedelta
 def fetch_product_data(product_id):
     response = requests.get(f'https://fakestoreapi.com/products/{product_id}')
     if response.status_code == 200:
-        if response.text:  # Check if the response is not empty
+        if response.text:
             try:
                 product_data = response.json()
                 return product_data
             except json.JSONDecodeError as e:
-                print(f"Error decoding JSON for product ID {product_id}: {e}")
+                print(f"Error decoding JSON for {product_id}: {e}")
         else:
-            print(f"Empty response for product ID {product_id}.")
+            print(f"Empty response for {product_id}.")
     else:
-        print(f"Failed to fetch data for product ID {product_id}. Status code: {response.status_code}")
+        print(f"Failed to fetch data for{product_id}. Status code: {response.status_code}")
 
 
 def generate_random_datetime():
@@ -39,7 +39,7 @@ def create_products_table(cursor):
 
 def insert_product_into_db(cursor, product_data):
     cursor.execute('''INSERT INTO "products" ("title", "category", "price", "description", "date_added")
-    VALUES (?, ?, ?, ?, ?);''',
+                        VALUES (?, ?, ?, ?, ?);''',
                    (product_data["title"], product_data["category"], product_data["price"], product_data["description"],
                     generate_random_datetime()))
 
@@ -47,19 +47,16 @@ def insert_product_into_db(cursor, product_data):
 if __name__ == '__main__':
     conn = sqlite3.connect('products.db')
     cur = conn.cursor()
+
     create_products_table(cur)
+
     a, b = int(input('Enter start id: ')), int(input('Enter end id: '))
-    for i in range(a, b+1):
+    for i in range(a, b + 1):
         product_data = fetch_product_data(i)
         if product_data:
             insert_product_into_db(cur, product_data)
+
     conn.commit()
     cur.execute('SELECT * FROM "products";')
     print(*cur.fetchall(), sep='\n')
     conn.close()
-
-
-
-
-
-
